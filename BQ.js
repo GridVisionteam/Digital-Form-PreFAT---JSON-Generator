@@ -90,34 +90,40 @@ async function goToNext() {
     localStorage.setItem('aoModulesDetails', JSON.stringify(extractRowData('.module-sheet[data-module-type="AO"] tbody tr')));
 
     const diModulesData = [];
-    document.querySelectorAll('.module-sheet[data-module-type="DI"] tbody tr').forEach((row, i) => {
+    document.querySelectorAll('.module-sheet[data-module-type="DI"] tbody tr').forEach((row, index) => {
         const partNo = row.querySelector('select[name$="_part_no"]')?.value;
-        const type = partNo?.includes('DI-16') ? 'DI-16' : 'DI-32';
-        window.diModuleTypes[i + 1] = type;
+        let moduleType = 'DI-32'; 
+        if (partNo && partNo.includes('DI-16')) moduleType = 'DI-16';
+        
+        window.diModuleTypes[index + 1] = moduleType;
         diModulesData.push({
-            partNo,
+            partNo: partNo,
             subrack: row.querySelector('input[name$="_subrack"]')?.value,
             slot: row.querySelector('input[name$="_slot"]')?.value,
             serial: row.querySelector('input[name$="_serial"]')?.value,
-            type
+            type: moduleType
         });
     });
-    localStorage.setItem('diModulesDetails', JSON.stringify(diModulesData));
+    localStorage.setItem('diModuleTypes', JSON.stringify(window.diModuleTypes));
 
+    // Save DO modules (with type logic)
     const doModulesData = [];
-    document.querySelectorAll('.module-sheet[data-module-type="DO"] tbody tr').forEach((row, i) => {
+    document.querySelectorAll('.module-sheet[data-module-type="DO"] tbody tr').forEach((row, index) => {
         const partNo = row.querySelector('select[name$="_part_no"]')?.value;
-        const type = partNo?.includes('CO-8') ? 'CO-8-A' : 'CO-16-A';
-        window.doModuleTypes[i + 1] = type;
+        let moduleType = 'CO-16-A';
+        if (partNo && partNo.includes('CO-8')) moduleType = 'CO-8-A';
+        
+        window.doModuleTypes[index + 1] = moduleType;
         doModulesData.push({
-            partNo,
+            partNo: partNo,
             subrack: row.querySelector('input[name$="_subrack"]')?.value,
             slot: row.querySelector('input[name$="_slot"]')?.value,
             serial: row.querySelector('input[name$="_serial"]')?.value,
-            type
+            type: moduleType
         });
     });
-    localStorage.setItem('doModulesDetails', JSON.stringify(doModulesData));
+    localStorage.setItem('doModuleTypes', JSON.stringify(window.doModuleTypes));
+
 
     localStorage.setItem('diModulesToTest', diCount);
     localStorage.setItem('doModulesToTest', doCount);

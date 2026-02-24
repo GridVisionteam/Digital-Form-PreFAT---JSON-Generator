@@ -72,11 +72,6 @@ function generateAIRows() {
 }
 
 async function saveAndGoToNext() {
-    // Validate all checkboxes are ticked
-    if (!validateAICheckboxes()) {
-        return;
-    }
-
     // Validate all required inputs are filled
     if (!validateAIInputs()) {
         return;
@@ -551,34 +546,3 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize with AI page
     showFunctionalityAIPage();
 });
-
-
-function validateAICheckboxes() {
-    let allChecked = true;
-    const checkboxes = document.querySelectorAll('#functionalityAIPage input[type="checkbox"].ai-test-input');
-    const emptyCheckboxes = [];
-    
-    checkboxes.forEach(checkbox => {
-        if (!checkbox.checked) {
-            allChecked = false;
-            emptyCheckboxes.push(checkbox);
-            // Highlight unchecked checkboxes
-            checkbox.parentElement.style.backgroundColor = '#ffebee';
-            checkbox.parentElement.style.border = '2px solid red';
-        } else {
-            // Clear styles if checked
-            checkbox.parentElement.style.backgroundColor = '';
-            checkbox.parentElement.style.border = '';
-        }
-    });
-    
-    if (!allChecked) {
-        // Scroll to first unchecked checkbox
-        if (emptyCheckboxes.length > 0) {
-            emptyCheckboxes[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        showCustomAlert('Please tick all checkboxes (0mA, 4mA, 8mA, 12mA, 16mA, 20mA) for all channels before continuing.');
-    }
-    
-    return allChecked;
-}

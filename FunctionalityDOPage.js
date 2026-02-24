@@ -511,10 +511,10 @@ async function handleDOTestSubmission() {
     }
 
     // Validate that one checkbox is selected for each row
-    if (!validateDOCheckboxGroups()) {
+    /*if (!validateDOCheckboxGroups()) {
         alert("Please select either 1 or 2 for all channels before continuing.");
         return;
-    }
+    }*/
     
     // Save the current module's test data
     saveDOTestData(window.currentDOModule);
@@ -581,10 +581,10 @@ async function handleDO8TestSubmission() {
     }
 
     // Validate that one checkbox is selected for each row
-    if (!validateDO8CheckboxGroups()) {
+    /*if (!validateDO8CheckboxGroups()) {
         alert("Please select either 1 or 2 for all channels before continuing.");
         return;
-    }
+    }*/
 
     // Save data and continue to next module
     saveDO8TestData(window.currentDOModule);

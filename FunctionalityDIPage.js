@@ -608,11 +608,11 @@ async function handleDITestSubmission() {
         return;
     }
 
-    // Validate that one checkbox is selected for each pair
+    /*// Validate that one checkbox is selected for each pair
     if (!validateCheckboxGroups()) {
         alert("Please select either 0 or 1 for all channels before continuing.");
         return;
-    }
+    }*/
     
     // Save the current module's test data
     saveDITestData(window.currentDIModule);
@@ -732,10 +732,10 @@ async function handleDI16TestSubmission() {
     }
 
     // Validate that one checkbox is selected for each row
-    if (!validateDI16CheckboxGroups()) {
+    /*if (!validateDI16CheckboxGroups()) {
         alert("Please select either 0 or 1 for all channels before continuing.");
         return;
-    }
+    }*/
     
     // Save data and continue to next module
     saveDI16TestData(window.currentDIModule);

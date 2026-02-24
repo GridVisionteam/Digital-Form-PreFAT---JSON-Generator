@@ -97,8 +97,8 @@ function generateVirtualAlarmTestRows() {
             : `<td style="text-align: center;">${item.iec104IOA}</td>`;
 
         // Use the default checked values from the item configuration
-        const iec101Checked = item.defaultIEC101Checked ? 'checked' : '';
-        const iec104Checked = item.defaultIEC104Checked ? 'checked' : '';
+        const iec101Checked = '';  // Always empty (unchecked)
+        const iec104Checked = '';  // Always empty (unchecked)
 
         row.innerHTML = `
             <td style="text-align: left;">${item.alarm}</td>
@@ -177,22 +177,18 @@ function loadVirtualAlarmTestData() {
         const iec101IOAInput = document.querySelector(`input[name="virtualAlarm_${itemNum}_iec101IOA"]`);
         if (iec101IOAInput) {
             if (testResult && testResult.iec101IOA !== undefined && testResult.iec101IOA !== null) {
-                // Load saved value
+                // Load saved value (including empty string)
                 iec101IOAInput.value = testResult.iec101IOA;
-            }
-            // REMOVE THE ELSE CLAUSE THAT WAS CLEARING THE VALUE
-            // Don't clear the input - keep the default value from row generation
+            } 
         }
         
         // Set IEC104 IOA value
         const iec104IOAInput = document.querySelector(`input[name="virtualAlarm_${itemNum}_iec104IOA"]`);
         if (iec104IOAInput) {
             if (testResult && testResult.iec104IOA !== undefined && testResult.iec104IOA !== null) {
-                // Load saved value
+                // Load saved value (including empty string)
                 iec104IOAInput.value = testResult.iec104IOA;
-            }
-            // REMOVE THE ELSE CLAUSE THAT WAS CLEARING THE VALUE
-            // Don't clear the input - keep the default value from row generation
+            } 
         }
     }
 }
@@ -239,80 +235,88 @@ function validateVirtualAlarmTests() {
     let isValid = true;
     let errors = [];
     
-    // Reset all error styles first
-    const allCheckboxes = document.querySelectorAll('input[type="checkbox"]');
-    allCheckboxes.forEach(checkbox => {
-        if(checkbox.parentElement) checkbox.parentElement.style.border = '';
-    });
+    // Get module counts from localStorage (saved from BQ page)
+    const diModulesToTest = parseInt(localStorage.getItem('diModulesToTest')) || 0;
+    const doModulesToTest = parseInt(localStorage.getItem('doModulesToTest')) || 0;
+    const aiModulesToTest = parseInt(localStorage.getItem('aiModulesToTest')) || 0;
+    const aoModulesToTest = parseInt(localStorage.getItem('aoModulesToTest')) || 0;
     
+    // Reset all error styles first
     const allIOAInputs = document.querySelectorAll('input[type="number"]');
     allIOAInputs.forEach(input => {
         input.style.border = '';
     });
 
-    // Check each test item (7 items)
+    // Define which items are always required (must have IOA values)
+    const alwaysRequiredItems = [1, 2, 3]; // SOE Buffer Full, Time Sync Alarm, RTU Health/Comm Fail
+    
+    // Define conditional items based on BQ
+    const conditionalItems = [
+        { itemNum: 4, required: diModulesToTest > 0, name: "DI Module Fail" },      // DI Module Fail
+        { itemNum: 5, required: doModulesToTest > 0, name: "DO Module Fail" },      // DO Module Fail
+        { itemNum: 6, required: aiModulesToTest > 0, name: "AI Module Fail" },      // AI Module Fail
+        { itemNum: 7, required: aoModulesToTest > 0, name: "AO Module Fail" }       // AO Module Fail
+    ];
+
+    // Check each test item (1-7)
     for (let itemNum = 1; itemNum <= 7; itemNum++) {
-        const iec101Checkbox = document.querySelector(`input[name="virtualAlarm_${itemNum}_iec101"]`);
-        const iec104Checkbox = document.querySelector(`input[name="virtualAlarm_${itemNum}_iec104"]`);
         const iec101IOAInput = document.querySelector(`input[name="virtualAlarm_${itemNum}_iec101IOA"]`);
         const iec104IOAInput = document.querySelector(`input[name="virtualAlarm_${itemNum}_iec104IOA"]`);
         
         // Get alarm name for error messages
-        const row = iec101Checkbox ? iec101Checkbox.closest('tr') : 
-                    iec104Checkbox ? iec104Checkbox.closest('tr') : null;
+        const row = iec101IOAInput ? iec101IOAInput.closest('tr') : 
+                    iec104IOAInput ? iec104IOAInput.closest('tr') : null;
         const alarmName = row ? row.querySelector('td:first-child').textContent.trim() : `Alarm ${itemNum}`;
+
+        // Determine if this item should be validated
+        let shouldValidate = false;
         
-        // --- IEC101 Validation ---
-        if (iec101Checkbox && iec101IOAInput) {
-            const hasNumber = iec101IOAInput.value.trim() !== "";
-            const isChecked = iec101Checkbox.checked;
-            
-            // Case 1: Checked but no number
-            if (isChecked && !hasNumber) {
-                iec101Checkbox.parentElement.style.border = '1px solid red';
-                iec101IOAInput.style.border = '1px solid red';
-                errors.push(`IEC101 ${alarmName}: IOA required when ticked`);
-                isValid = false;
+        if (alwaysRequiredItems.includes(itemNum)) {
+            shouldValidate = true;
+        } else {
+            const conditionalItem = conditionalItems.find(item => item.itemNum === itemNum);
+            if (conditionalItem && conditionalItem.required) {
+                shouldValidate = true;
             }
-            // Case 2: Has number but not checked (NEW VALIDATION)
-            else if (hasNumber && !isChecked) {
-                iec101Checkbox.parentElement.style.border = '1px solid red';
-                iec101IOAInput.style.border = '1px solid red';
-                errors.push(`IEC101 ${alarmName}: Remove IOA or tick the checkbox`);
+        }
+
+        if (!shouldValidate) continue;
+
+        // Validate IEC101 IOA field
+        if (iec101IOAInput) {
+            const hasValue = iec101IOAInput.value.trim() !== "";
+            if (!hasValue) {
+                iec101IOAInput.style.border = '2px solid red';
+                errors.push(`IEC101 ${alarmName}: IOA value is required`);
                 isValid = false;
             }
         }
         
-        // --- IEC104 Validation ---
-        if (iec104Checkbox && iec104IOAInput) {
-            const hasNumber = iec104IOAInput.value.trim() !== "";
-            const isChecked = iec104Checkbox.checked;
-            
-            // Case 1: Checked but no number
-            if (isChecked && !hasNumber) {
-                iec104Checkbox.parentElement.style.border = '1px solid red';
-                iec104IOAInput.style.border = '1px solid red';
-                errors.push(`IEC104 ${alarmName}: IOA required when ticked`);
-                isValid = false;
-            }
-            // Case 2: Has number but not checked (NEW VALIDATION)
-            else if (hasNumber && !isChecked) {
-                iec104Checkbox.parentElement.style.border = '1px solid red';
-                iec104IOAInput.style.border = '1px solid red';
-                errors.push(`IEC104 ${alarmName}: Remove IOA or tick the checkbox`);
+        // Validate IEC104 IOA field
+        if (iec104IOAInput) {
+            const hasValue = iec104IOAInput.value.trim() !== "";
+            if (!hasValue) {
+                iec104IOAInput.style.border = '2px solid red';
+                errors.push(`IEC104 ${alarmName}: IOA value is required`);
                 isValid = false;
             }
         }
     }
     
     if (!isValid) {
-        alert('Validation failed:\n\n' + errors.join('\n'));
+        alert('Validation failed - IOA values required:\n\n' + errors.join('\n'));
     }
     
     return isValid;
 }
 
 function validateVirtualAlarmIOAIndexFields() {
+    // Get module counts from localStorage (saved from BQ page)
+    const diModulesToTest = parseInt(localStorage.getItem('diModulesToTest')) || 0;
+    const doModulesToTest = parseInt(localStorage.getItem('doModulesToTest')) || 0;
+    const aiModulesToTest = parseInt(localStorage.getItem('aiModulesToTest')) || 0;
+    const aoModulesToTest = parseInt(localStorage.getItem('aoModulesToTest')) || 0;
+    
     // Get all IEC101 and IEC104 input fields
     const iec101Inputs = document.querySelectorAll('input[name*="iec101IOA"]');
     const iec104Inputs = document.querySelectorAll('input[name*="iec104IOA"]');
@@ -321,70 +325,117 @@ function validateVirtualAlarmIOAIndexFields() {
     let emptyFields = [];
     let duplicateFields = [];
 
+    // Define which items are always required
+    const alwaysRequiredItems = [1, 2, 3]; // SOE Buffer Full, Time Sync Alarm, RTU Health/Comm Fail
+    
+    // Define conditional items
+    const conditionalItems = [
+        { itemNum: 4, required: diModulesToTest > 0 }, // DI Module Fail
+        { itemNum: 5, required: doModulesToTest > 0 }, // DO Module Fail
+        { itemNum: 6, required: aiModulesToTest > 0 }, // AI Module Fail
+        { itemNum: 7, required: aoModulesToTest > 0 }  // AO Module Fail
+    ];
+
     // Reset previous red borders
     [...iec101Inputs, ...iec104Inputs].forEach(input => {
         input.style.border = ''; // clear border
     });
 
-    // 1. Check IEC101 fields (Empty check) - ONLY if checked
+    // 1. Check IEC101 fields - only check that they have values for required items
     iec101Inputs.forEach(input => {
-        const checkboxName = input.name.replace('IOA', ''); // derived from input name
-        const checkbox = document.querySelector(`input[name="${checkboxName}"]`);
+        const inputName = input.name;
+        const itemNumMatch = inputName.match(/virtualAlarm_(\d+)_iec101IOA/);
+        if (!itemNumMatch) return;
         
-        const hasNumber = input.value.trim() !== "";
-        const isChecked = checkbox && checkbox.checked;
+        const itemNum = parseInt(itemNumMatch[1]);
+        const hasValue = input.value.trim() !== "";
+
+        // Determine if this item should be validated
+        let shouldValidate = false;
         
-        // Case 1: Checked but no number
-        if (isChecked && !hasNumber) {
-            input.style.border = '2px solid red';
-            isValid = false;
-            const alarmName = getAlarmNameFromInput(input);
-            emptyFields.push(`IEC101 ${alarmName}: IOA required when ticked`);
-        }
-        // Case 2: Has number but not checked (NEW VALIDATION)
-        else if (hasNumber && !isChecked) {
-            input.style.border = '2px solid red';
-            isValid = false;
-            const alarmName = getAlarmNameFromInput(input);
-            emptyFields.push(`IEC101 ${alarmName}: Remove IOA or tick the checkbox`);
+        if (alwaysRequiredItems.includes(itemNum)) {
+            shouldValidate = true;
+            
+            // For always required items, they MUST have a value
+            if (!hasValue) {
+                input.style.border = '2px solid red';
+                isValid = false;
+                const alarmName = getAlarmNameFromInput(input);
+                emptyFields.push(`IEC101 ${alarmName}: IOA value is required`);
+            }
+        } else {
+            const conditionalItem = conditionalItems.find(item => item.itemNum === itemNum);
+            if (conditionalItem && conditionalItem.required) {
+                shouldValidate = true;
+                
+                // For conditional required items, they MUST have a value
+                if (!hasValue) {
+                    input.style.border = '2px solid red';
+                    isValid = false;
+                    const alarmName = getAlarmNameFromInput(input);
+                    emptyFields.push(`IEC101 ${alarmName}: IOA value is required (${conditionalItem.required ? 'module exists' : ''})`);
+                }
+            }
         }
     });
     
-    // 2. Check IEC104 fields (Empty check) - ONLY if checked
+    // 2. Check IEC104 fields - only check that they have values for required items
     iec104Inputs.forEach(input => {
-        const checkboxName = input.name.replace('IOA', '');
-        const checkbox = document.querySelector(`input[name="${checkboxName}"]`);
+        const inputName = input.name;
+        const itemNumMatch = inputName.match(/virtualAlarm_(\d+)_iec104IOA/);
+        if (!itemNumMatch) return;
         
-        const hasNumber = input.value.trim() !== "";
-        const isChecked = checkbox && checkbox.checked;
+        const itemNum = parseInt(itemNumMatch[1]);
+        const hasValue = input.value.trim() !== "";
+
+        // Determine if this item should be validated
+        let shouldValidate = false;
         
-        // Case 1: Checked but no number
-        if (isChecked && !hasNumber) {
-            input.style.border = '2px solid red';
-            isValid = false;
-            const alarmName = getAlarmNameFromInput(input);
-            emptyFields.push(`IEC104 ${alarmName}: IOA required when ticked`);
-        }
-        // Case 2: Has number but not checked (NEW VALIDATION)
-        else if (hasNumber && !isChecked) {
-            input.style.border = '2px solid red';
-            isValid = false;
-            const alarmName = getAlarmNameFromInput(input);
-            emptyFields.push(`IEC104 ${alarmName}: Remove IOA or tick the checkbox`);
+        if (alwaysRequiredItems.includes(itemNum)) {
+            shouldValidate = true;
+            
+            // For always required items, they MUST have a value
+            if (!hasValue) {
+                input.style.border = '2px solid red';
+                isValid = false;
+                const alarmName = getAlarmNameFromInput(input);
+                emptyFields.push(`IEC104 ${alarmName}: IOA value is required`);
+            }
+        } else {
+            const conditionalItem = conditionalItems.find(item => item.itemNum === itemNum);
+            if (conditionalItem && conditionalItem.required) {
+                shouldValidate = true;
+                
+                // For conditional required items, they MUST have a value
+                if (!hasValue) {
+                    input.style.border = '2px solid red';
+                    isValid = false;
+                    const alarmName = getAlarmNameFromInput(input);
+                    emptyFields.push(`IEC104 ${alarmName}: IOA value is required`);
+                }
+            }
         }
     });
 
     if (!isValid) {
-        alert(`Validation failed:\n\n${emptyFields.join('\n')}`);
+        alert(`Validation failed - IOA values required:\n\n${emptyFields.join('\n')}`);
         return false;
     }
 
-    // 3. Check for duplicate values in IEC101 column
-    // Filter: Only include inputs where the checkbox is CHECKED
+    // 3. Check for duplicate values in IEC101 column (only for required items that have values)
     const iec101ActiveInputs = Array.from(iec101Inputs).filter(input => {
-        const checkboxName = input.name.replace('IOA', '');
-        const checkbox = document.querySelector(`input[name="${checkboxName}"]`);
-        return checkbox && checkbox.checked && input.value.trim() !== '';
+        const itemNumMatch = input.name.match(/virtualAlarm_(\d+)_iec101IOA/);
+        if (!itemNumMatch) return false;
+        
+        const itemNum = parseInt(itemNumMatch[1]);
+        
+        // Only include if item should be validated and has a value
+        if (input.value.trim() === "") return false;
+        
+        if (alwaysRequiredItems.includes(itemNum)) return true;
+        
+        const conditionalItem = conditionalItems.find(item => item.itemNum === itemNum);
+        return conditionalItem && conditionalItem.required;
     });
 
     const iec101Values = iec101ActiveInputs.map(input => input.value.trim());
@@ -392,7 +443,6 @@ function validateVirtualAlarmIOAIndexFields() {
 
     if (iec101Duplicates.length > 0) {
         isValid = false;
-        // Highlight only the active inputs that have duplicates
         iec101ActiveInputs.forEach(input => {
             if (iec101Duplicates.includes(input.value.trim())) {
                 input.style.border = '2px solid red';
@@ -401,12 +451,20 @@ function validateVirtualAlarmIOAIndexFields() {
         duplicateFields.push(`IEC101: Duplicate values found (${iec101Duplicates.join(', ')})`);
     }
 
-    // 4. Check for duplicate values in IEC104 column
-    // Filter: Only include inputs where the checkbox is CHECKED
+    // 4. Check for duplicate values in IEC104 column (only for required items that have values)
     const iec104ActiveInputs = Array.from(iec104Inputs).filter(input => {
-        const checkboxName = input.name.replace('IOA', '');
-        const checkbox = document.querySelector(`input[name="${checkboxName}"]`);
-        return checkbox && checkbox.checked && input.value.trim() !== '';
+        const itemNumMatch = input.name.match(/virtualAlarm_(\d+)_iec104IOA/);
+        if (!itemNumMatch) return false;
+        
+        const itemNum = parseInt(itemNumMatch[1]);
+        
+        // Only include if item should be validated and has a value
+        if (input.value.trim() === "") return false;
+        
+        if (alwaysRequiredItems.includes(itemNum)) return true;
+        
+        const conditionalItem = conditionalItems.find(item => item.itemNum === itemNum);
+        return conditionalItem && conditionalItem.required;
     });
 
     const iec104Values = iec104ActiveInputs.map(input => input.value.trim());
@@ -414,7 +472,6 @@ function validateVirtualAlarmIOAIndexFields() {
 
     if (iec104Duplicates.length > 0) {
         isValid = false;
-        // Highlight only the active inputs that have duplicates
         iec104ActiveInputs.forEach(input => {
             if (iec104Duplicates.includes(input.value.trim())) {
                 input.style.border = '2px solid red';
@@ -424,11 +481,20 @@ function validateVirtualAlarmIOAIndexFields() {
     }
 
     if (duplicateFields.length > 0) {
-        alert(`Duplicate IOA index values found among checked items:\n${duplicateFields.join('\n')}\n\n`);
+        alert(`Duplicate IOA index values found:\n${duplicateFields.join('\n')}\n\n`);
         return false;
     }
 
     return true;
+}
+
+// Helper function to get alarm name from input element
+function getAlarmNameFromInput(input) {
+    const row = input.closest('tr');
+    if (row) {
+        return row.querySelector('td:first-child').textContent.trim();
+    }
+    return 'Unknown';
 }
 
 

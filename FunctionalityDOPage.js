@@ -103,9 +103,9 @@ function generateDORows() {
             <td style="text-align: center;">
                 <input type="checkbox" name="DO_${window.currentDOModule}_checkbox_${rowNumber}" value="2" class="do-test-checkbox do-checkbox-group">
             </td>
-            <td><input type="number" class="do-test-input" name="DO_${window.currentDOModule}_IEC101_${rowNumber}"></td>
-            <td><input type="number" class="do-test-input" name="DO_${window.currentDOModule}_IEC104_${rowNumber}"></td>
-            <td><input type="number" class="do-test-input" name="DO_${window.currentDOModule}_DNP3_${rowNumber}"></td>
+            <td><input type="text" class="do-test-input" name="DO_${window.currentDOModule}_IEC101_${rowNumber}" placeholder="Enter IOA or -"></td>
+            <td><input type="text" class="do-test-input" name="DO_${window.currentDOModule}_IEC104_${rowNumber}" placeholder="Enter IOA or -"></td>
+            <td><input type="text" class="do-test-input" name="DO_${window.currentDOModule}_DNP3_${rowNumber}" placeholder="Enter IOA or -"></td>
         `;
         
         tableBody.appendChild(row);
@@ -131,6 +131,9 @@ function generateDORows() {
     document.querySelectorAll('.do-test-input').forEach(input => {
         input.addEventListener('input', updateSubmitButtonState);
     });
+    
+    // Add input restrictions for number-only with dash
+    addDOInputRestrictions();
 }
 
 function generateDO8Rows() {
@@ -153,9 +156,9 @@ function generateDO8Rows() {
             <td style="text-align: center;">
                 <input type="checkbox" name="DO8_${window.currentDOModule}_checkbox_${rowNumber}" value="2" class="do8-test-checkbox do8-checkbox-group">
             </td>
-            <td><input type="number" class="do8-test-input" name="DO_${window.currentDOModule}_IEC101_${rowNumber}"></td>
-            <td><input type="number" class="do8-test-input" name="DO_${window.currentDOModule}_IEC104_${rowNumber}"></td>
-            <td><input type="number" class="do8-test-input" name="DO_${window.currentDOModule}_DNP3_${rowNumber}"></td>
+            <td><input type="text" class="do8-test-input" name="DO_${window.currentDOModule}_IEC101_${rowNumber}" placeholder="Enter IOA or -"></td>
+            <td><input type="text" class="do8-test-input" name="DO_${window.currentDOModule}_IEC104_${rowNumber}" placeholder="Enter IOA or -"></td>
+            <td><input type="text" class="do8-test-input" name="DO_${window.currentDOModule}_DNP3_${rowNumber}" placeholder="Enter IOA or -"></td>
         `;
         
         tableBody.appendChild(row);
@@ -181,6 +184,9 @@ function generateDO8Rows() {
     document.querySelectorAll('#do8TableBody .do8-test-input').forEach(input => {
         input.addEventListener('input', updateDO8SubmitButtonState);
     });
+    
+    // Add input restrictions for number-only with dash
+    addDO8InputRestrictions();
 }
 
 // Update SelectAll function for checkboxes (selects "2" for all)
@@ -299,7 +305,7 @@ function clearAllDO8() {
     const checkboxes = document.querySelectorAll("#do8TableBody input[type='checkbox']");
     checkboxes.forEach(cb => cb.checked = false);
 
-    const textInputs = document.querySelectorAll("#do8TableBody input[type='number']");
+    const textInputs = document.querySelectorAll("#do8TableBody input[type='text']");
     textInputs.forEach(input => input.value = '');
 
     updateDO8SubmitButtonState();
@@ -665,21 +671,51 @@ function validateDOIOAIndexFields() {
     // Reset red borders
     [...currentIEC101Inputs, ...currentIEC104Inputs].forEach(input => input.style.border = '');
 
-    // --- CHECK 1: Ensure Fields are Filled ---
+    // --- CHECK 1: Ensure Fields are Filled (now accepts "-") ---
     let emptyFound = false;
     currentIEC101Inputs.forEach(input => {
-        if (!input.value.trim()) { input.style.border = '2px solid red'; emptyFound = true; }
+        const value = input.value.trim();
+        if (value === "") { 
+            input.style.border = '2px solid red'; 
+            emptyFound = true; 
+        }
     });
     currentIEC104Inputs.forEach(input => {
-        if (!input.value.trim()) { input.style.border = '2px solid red'; emptyFound = true; }
+        const value = input.value.trim();
+        if (value === "") { 
+            input.style.border = '2px solid red'; 
+            emptyFound = true; 
+        }
     });
 
     if (emptyFound) {
-        alert("Please fill in all required IOA/Index fields before continuing.");
+        alert("Please fill in all required IOA/Index fields before continuing (use '-' for empty fields).");
         return false;
     }
 
-    // --- CHECK 2: Global Duplicates (Max 2 Allowed Total) ---
+    // --- CHECK 2: Validate Format (only numbers or "-") ---
+    let formatErrorFound = false;
+    currentIEC101Inputs.forEach(input => {
+        const value = input.value.trim();
+        if (!isValidDOIOAValue(value)) {
+            input.style.border = '2px solid red';
+            formatErrorFound = true;
+        }
+    });
+    currentIEC104Inputs.forEach(input => {
+        const value = input.value.trim();
+        if (!isValidDOIOAValue(value)) {
+            input.style.border = '2px solid red';
+            formatErrorFound = true;
+        }
+    });
+
+    if (formatErrorFound) {
+        alert("IOA/Index fields can only contain numbers or '-' (for empty fields). Please correct the highlighted fields.");
+        return false;
+    }
+
+    // --- CHECK 3: Global Duplicates (Max 2 Allowed Total, ignore "-") ---
     let globalIEC101 = [];
     let globalIEC104 = [];
     
@@ -701,7 +737,8 @@ function validateDOIOAIndexFields() {
         if (moduleData.iec101Values) {
             Object.entries(moduleData.iec101Values).forEach(([cellKey, val]) => {
                 const trimmedVal = String(val).trim();
-                if (trimmedVal !== "") {
+                // Ignore "-" and empty strings in duplicate checking
+                if (trimmedVal !== "" && trimmedVal !== "-") {
                     globalIEC101.push(trimmedVal);
                     if (!cellSources101[trimmedVal]) {
                         cellSources101[trimmedVal] = [];
@@ -725,7 +762,8 @@ function validateDOIOAIndexFields() {
         if (moduleData.iec104Values) {
             Object.entries(moduleData.iec104Values).forEach(([cellKey, val]) => {
                 const trimmedVal = String(val).trim();
-                if (trimmedVal !== "") {
+                // Ignore "-" and empty strings in duplicate checking
+                if (trimmedVal !== "" && trimmedVal !== "-") {
                     globalIEC104.push(trimmedVal);
                     if (!cellSources104[trimmedVal]) {
                         cellSources104[trimmedVal] = [];
@@ -749,7 +787,8 @@ function validateDOIOAIndexFields() {
 
     currentIEC101Inputs.forEach(input => {
         const val = input.value.trim();
-        if (val !== "") {
+        // Ignore "-" and empty strings in duplicate checking
+        if (val !== "" && val !== "-") {
             globalIEC101.push(val);
             if (!cellSources101[val]) {
                 cellSources101[val] = [];
@@ -772,7 +811,8 @@ function validateDOIOAIndexFields() {
 
     currentIEC104Inputs.forEach(input => {
         const val = input.value.trim();
-        if (val !== "") {
+        // Ignore "-" and empty strings in duplicate checking
+        if (val !== "" && val !== "-") {
             globalIEC104.push(val);
             if (!cellSources104[val]) {
                 cellSources104[val] = [];
@@ -997,4 +1037,97 @@ function validateDO8CheckboxGroups() {
     }
     
     return true;
+}
+
+function isValidDOIOAValue(value) {
+    // Allow empty values (these will be caught by empty field validation)
+    if (value === "") return false;
+    
+    // Allow single dash
+    if (value === "-") return true;
+    
+    // Check if the value contains only numbers (no letters or special characters)
+    // This regex matches only digits (0-9)
+    return /^\d+$/.test(value);
+}
+
+// Add this function to restrict input to numbers and dash for DO inputs
+function restrictDOIOAInput(event) {
+    const input = event.target;
+    const value = input.value;
+    
+    // Allow backspace, delete, tab, escape, enter, etc.
+    const key = event.key;
+    if (event.keyCode === 8 || event.keyCode === 46 || event.keyCode === 9 || 
+        event.keyCode === 27 || event.keyCode === 13 || event.keyCode === 37 || 
+        event.keyCode === 39 || event.keyCode === 35 || event.keyCode === 36) {
+        return true;
+    }
+    
+    // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+    if (event.ctrlKey && (key === 'a' || key === 'c' || key === 'v' || key === 'x')) {
+        return true;
+    }
+    
+    // Allow numbers and dash
+    if (!/^[\d-]$/.test(key)) {
+        event.preventDefault();
+        return false;
+    }
+    
+    // Prevent multiple dashes
+    if (key === '-' && value.includes('-')) {
+        event.preventDefault();
+        return false;
+    }
+    
+    return true;
+}
+
+// Add input restrictions for DO inputs
+function addDOInputRestrictions() {
+    document.querySelectorAll('.do-test-input').forEach(input => {
+        input.addEventListener('keydown', restrictDOIOAInput);
+        
+        // Also validate on paste
+        input.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+            // Only allow numbers and dash
+            if (/^[\d-]+$/.test(pastedText)) {
+                // Prevent multiple dashes
+                if (pastedText.includes('-') && pastedText.indexOf('-') !== pastedText.lastIndexOf('-')) {
+                    alert('Only one dash character is allowed per field');
+                    return;
+                }
+                this.value = pastedText;
+            } else {
+                alert('Only numbers and dash character are allowed');
+            }
+        });
+    });
+}
+
+// Add input restrictions for DO8 inputs
+function addDO8InputRestrictions() {
+    document.querySelectorAll('.do8-test-input').forEach(input => {
+        input.addEventListener('keydown', restrictDOIOAInput);
+        
+        // Also validate on paste
+        input.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+            // Only allow numbers and dash
+            if (/^[\d-]+$/.test(pastedText)) {
+                // Prevent multiple dashes
+                if (pastedText.includes('-') && pastedText.indexOf('-') !== pastedText.lastIndexOf('-')) {
+                    alert('Only one dash character is allowed per field');
+                    return;
+                }
+                this.value = pastedText;
+            } else {
+                alert('Only numbers and dash character are allowed');
+            }
+        });
+    });
 }

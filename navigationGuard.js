@@ -4,8 +4,6 @@ const PAGE_SEQUENCE = [
     'Pre-requisite.html',
     'ProductDeclaration.html',
     'TestSetup.html',
-    'ElectronicAcc.html',
-    'RTUPanelAcc.html',
     'PanelInformation.html',
     'SubrackInspection.html',
     'QualityInspectionPowerSupply.html',

@@ -267,7 +267,7 @@ function loadPanelTestData() {
 // Navigation functions
 function goToPreviousPage() {
     savePanelTestData();
-    window.location.href = 'RTUPanelAcc.html';
+    window.location.href = 'TestSetup.html';
 }
 
 function goToFunctionalityPowerSupply() {

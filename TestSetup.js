@@ -13,7 +13,7 @@ function goToNextPage() {
     // Save checkbox states before navigating
     saveCheckboxStates();
     navigationGuard.markPageAsCompleted();
-    window.location.href = 'ElectronicAcc.html';
+    window.location.href = 'PanelInformation.html';
 }
 
 // Function to validate all test setup checkboxes are ticked
